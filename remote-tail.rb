@@ -20,26 +20,31 @@ module Watcher
 			print line.line
 		end
 	end
+end
 
+def run(id, watcher, *command)
+	p command
+	Thread.new do
+		IO.popen(command) do |p|
+			while !p.eof? do
+				watcher.report Watcher::Line.new(id, p.read(100))
+			end
+		end
+	end
 end
 
 watcher = Watcher::Watcher.new
 
-a = Thread.new do
-	IO.popen('ssh data-bris.acrc.bris.ac.uk tail -f /var/log/tomcat6/catalina.out') do |p|
-		while !p.eof? do
-			watcher.report Watcher::Line.new(1, p.read(100))
-		end
-	end
-end
+a = run('data-bris catalina.out', watcher,
+	'ssh', 'data-bris.acrc.bris.ac.uk', 'tail', '-f', '/var/log/tomcat6/catalina.out')
 
-b = Thread.new do
-	IO.popen('ssh www11-py.ilrt.bris.ac.uk tail -f ~databris/ckan/var/log/ckan.log') do |p|
-		while !p.eof? do
-			watcher.report Watcher::Line.new(2, p.read(100))
-		end
-	end
-end
+b = run('ckan prod log', watcher,
+	'ssh', 'www11-py.ilrt.bris.ac.uk', 'tail', '-f', '~databris/ckan/var/log/ckan.log')
+
+c = run('data-bris localhost', watcher,
+	'ssh', 'data-bris.acrc.bris.ac.uk', 'tail', '-f', '/var/log/tomcat6/localhost.2014-10-17.log')
+
 
 a.join
 b.join
+c.join
