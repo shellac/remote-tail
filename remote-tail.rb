@@ -33,18 +33,16 @@ def run(id, watcher, *command)
 	end
 end
 
+watcher_threads = []
+
 watcher = Watcher::Watcher.new
 
-a = run('data-bris catalina.out', watcher,
-	'ssh', 'data-bris.acrc.bris.ac.uk', 'tail', '-f', '/var/log/tomcat6/catalina.out')
+# Read config file
+# Format NAME HOST FILE
+ARGF.lines do |line|
+	description, host, remote_file = line.split(/\s+/)
+	puts "Watch '#{description}' <#{remote_file}> on host <#{host}>"
+	watcher_threads << run(description, watcher, 'ssh', host, 'tail', '-f', remote_file)
+end
 
-b = run('ckan prod log', watcher,
-	'ssh', 'www11-py.ilrt.bris.ac.uk', 'tail', '-f', '~databris/ckan/var/log/ckan.log')
-
-c = run('data-bris localhost', watcher,
-	'ssh', 'data-bris.acrc.bris.ac.uk', 'tail', '-f', '/var/log/tomcat6/localhost.2014-10-17.log')
-
-
-a.join
-b.join
-c.join
+watcher_threads.each &:join
